@@ -1,0 +1,16 @@
+{
+  "name": "elm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "cd UI && protractor conf.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "protractor": "^5.1.2"
+  }
+}
