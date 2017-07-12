@@ -43,13 +43,18 @@ type alias Score =
 
 type alias Model =
   {
-    board: Board
+    namePlayer1: String
+    , namePlayer2: String
+    , board: Board
     , score: Score
     , gameOver: Bool
     , currentPlayer: Owner
     , currentPlayerCompletedSquare: Bool
     , rows: Int
-    ,columns: Int
+    , columns: Int
+    , maxRows: Int
+    , maxColumns: Int
+    , showForm: Bool
   }
 
 seq: Int -> List Int
@@ -88,13 +93,18 @@ init =
 initialModel : Model
 initialModel =
   {
-     board = newBoard 3 4
+    namePlayer1 = "Player1"
+    , namePlayer2 = "Player2"
+     , board = newBoard 3 4
      , score = Score 0 0
      , gameOver = False
      , currentPlayer = Player1
      , currentPlayerCompletedSquare = False
      , rows = 3
      , columns = 4
+     , maxRows = 20
+     , maxColumns = 20
+     , showForm = True
   }
 
 -- SUBSCRIPTIONS
@@ -106,7 +116,12 @@ subscriptions model =
 -- UPDATE
 type Msg =
     CreateBoard
+    | UpdateRows String
+    | UpdateColumns String
     | ClickSide (Side)
+    | NewGame
+    | UpdateNamePlayer1 String
+    | UpdateNamePlayer2 String
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -114,17 +129,40 @@ update msg model =
     CreateBoard ->
         ( { model | board = newBoard 3 4 }, Cmd.none)
 
+    UpdateRows rows ->
+        let newRows = toIntOrDefault model.rows rows
+        in
+        ( { model | rows = setIfInRange newRows model.rows 2 model.maxRows, board = newBoard newRows model.columns, currentPlayer = Player1  } , Cmd.none )
+
+    UpdateColumns columns ->
+        let newCols = toIntOrDefault model.columns columns
+         in
+        ( {model | columns = setIfInRange newCols model.columns 2 model.maxColumns, board = newBoard model.rows newCols, currentPlayer = Player1 } , Cmd.none)
+
+    UpdateNamePlayer1 name ->
+        ( { model | namePlayer1 = name }, Cmd.none)
+
+    UpdateNamePlayer2 name ->
+        ( { model | namePlayer2 = name }, Cmd.none)
+
     ClickSide (side) ->
         ( updateTurn model side, Cmd.none)
+
+    NewGame ->
+        ( { model | gameOver = False, currentPlayer = Player1, board = newBoard model.rows model.columns, showForm = True} , Cmd.none )
 
 
 updateTurn: Model -> Side -> Model
 updateTurn model side =
-    resetPlayerCompletedSquare model
+    closeForm model
+    |> resetPlayerCompletedSquare
     |> updateSide side
     |> updateSquares
     |> updatePlayer
     |> checkGameOver
+
+closeForm model =
+    { model | showForm = False }
 
 resetPlayerCompletedSquare: Model -> Model
 resetPlayerCompletedSquare model =
@@ -265,6 +303,17 @@ findSquare model row column =
 -- Left side
 --------------------------------------------------------------------------------------
 
+classList: List String -> String
+classList classes =
+    String.concat (List.intersperse " " classes)
+
+maybeCons : Maybe a -> List a -> List a
+maybeCons maybeItem list =
+     case maybeItem of
+          Just item -> item :: list
+          Nothing -> list
+
+
 corner =
     div [class "corner" ] []
 
@@ -281,12 +330,19 @@ side model elem direction =
             None -> "owner-none"
             Player1 -> "owner-player1"
             Player2 -> "owner-player2"
+
+        click = case elem.owner of
+            None -> Just <| onClick (ClickSide elem)
+            Player1 -> Nothing
+            Player2 -> Nothing
     in
 
-        div [class ("side " ++ cls ++ " " ++ ownercls)
-        , onClick (ClickSide elem)
-        , title ((toString elem.location.row) ++ ", " ++ (toString elem.location.column))
-         ] []
+        div (
+                maybeCons click
+                [ class ("side " ++ cls ++ " " ++ ownercls)
+                , title ((toString elem.location.row) ++ ", " ++ (toString elem.location.column))
+                ]
+            ) []
 
 sideElement: Model -> Int -> Int -> SideDirection -> Html Msg
 sideElement model row col direction =
@@ -304,7 +360,7 @@ mapPlayerToLabel s1 = case s1.owner of
         Player2 -> "2"
 
 mapPlayerToClass s1 = case s1.owner of
-        None -> ""
+        None -> "no-owner"
         Player1 -> "owner-player1"
         Player2 -> "owner-player2"
 
@@ -366,13 +422,6 @@ toRows model =
 toPlayerArea: Model -> List (Html Msg)
 toPlayerArea model =
     [
-        div [] [
-            text ((toString model.currentPlayer) ++ ", it's your turn!")
-            , div [class "score"] [
-                div [] [text ("Player1: " ++ toString model.score.player1)]
-                , div [] [text ("Player2: " ++ toString model.score.player2)]
-            ]
-         ]
     ]
 
 gameOver: Model -> Html Msg
@@ -381,33 +430,107 @@ gameOver model =
             div [] [text "Player 1 wins"]
          else
              div [] [text "Player 2 wins"]
+
+        newGameButton = if model.gameOver then
+            button [onClick NewGame ] [text "New Game"]
+        else
+            span [] [text ""]
     in
         if model.gameOver then
             div [class "game-over"][
                 div [] [text "Game Over"]
                 , winner
+                , newGameButton
             ]
     else
         div [][]
 
-leftSide: Model -> Html Msg
-leftSide model =
-    let playerArea = (div [class "player-area"] (toPlayerArea model))
-        gameOverDiv = gameOver model
+gameBoard: Model -> Html Msg
+gameBoard model =
+    let
         game = (div [class "rows"] (toRows model))
     in
         div []
-            (
-            (List.singleton playerArea)
-            ++
-            (List.singleton gameOverDiv)
-            ++
-            (List.singleton game)
-            )
+            [ game ]
+
+gameStatus: Model -> Html Msg
+gameStatus model =
+    div[ id "game-status"]
+        (List.singleton (gameOver model))
+
+showPlayer: String -> Int -> Bool -> String -> Html Msg
+showPlayer label score isCurrentPlayer playerclass =
+    let cls = if isCurrentPlayer then "current-player" else ""
+    in
+        div [class (classList ["player-status",cls,playerclass])] [text (label ++ toString score)]
+
+players: Model -> List (Html Msg)
+players model =
+    [
+        (showPlayer (model.namePlayer1 ++ ": ") model.score.player1 (model.currentPlayer == Player1) "player1")
+        , (showPlayer (model.namePlayer2 ++ ": ") model.score.player2 (model.currentPlayer == Player2) "player2")
+    ]
+
+
+-- Control Panel
+controlPanel: Model -> Html Msg
+controlPanel model =
+    if model.showForm then
+        form model
+    else
+        div [][]
+
+numericInput: String -> String -> Int -> Int -> (String -> Msg) -> Html Msg
+numericInput idStr lbl val maxValue msg =
+    div[class "numeric-input"] [
+      label [for idStr ] [text lbl]
+      ,span [] [text (toString val)]
+      ,input [
+        id idStr
+        , value (toString val)
+        , type_ "range"
+        , Html.Attributes.min "2"
+        , Html.Attributes.max (toString maxValue)
+        ,onInput msg] []
+      ]
+
+form: Model -> Html Msg
+form model =
+    div [class "control-panel] [
+        div[] [
+            label [for "namePlayer1" ] [text "Player 1 Name: "]
+            ,input [ id "namePlayer1",  value model.namePlayer1, onInput UpdateNamePlayer1] []
+            ]
+        ,div[] [
+            label [for "namePlayer2" ] [text "Player 2 Name: "]
+            ,input [ id "namePlayer2",  value model.namePlayer2, onInput UpdateNamePlayer2] []
+            ]
+        , numericInput "rows" "Rows" model.rows model.maxRows UpdateRows
+        , numericInput "cols" "Cols" model.columns model.maxColumns UpdateColumns
+        ]
+
+----------------------------
+-- tools
+----------------------------
+setIfInRange: Int -> Int -> Int -> Int -> Int
+setIfInRange newVal currentValue minValue maxValue =
+    if minValue <= newVal && newVal <= maxValue then
+        newVal
+    else
+        currentValue
+
+toIntOrDefault default string =
+    Result.withDefault default (String.toInt string)
 
 view : Model -> Html Msg
 view model =
     div[ id "app" ]
-        [ stylesheet
-        , leftSide model
+        [
+        gameStatus model
+        , controlPanel model
+        , div [class "game" ]
+            (List.singleton (gameBoard model)
+            ++
+            players model
+            )
         ]

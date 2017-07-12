@@ -4,13 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "cd UI && protractor conf.js"
+    "test": "cd UI && protractor conf.js",
+    "watch": "chokidar \"**/*.elm\" -c \"elm make game3.elm  --output build/elm.compiled.js\" --initial --ignore \"/node_modules\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "chokidar-cli": "^1.2.0",
     "gulp": "^3.9.1",
-    "protractor": "^5.1.2"
+    "protractor": "^5.1.2",
+    "reload": "^2.0.0"
   }
 }
