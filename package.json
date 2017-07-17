@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "cd UI && protractor conf.js",
-    "watch": "chokidar \"**/*.elm\" -c \"elm make game3.elm  --output build/elm.compiled.js\" --initial --ignore \"/node_modules\""
+    "watch": "chokidar \"**/*.elm\" -c \"elm make app.elm  --output build/elm.compiled.js\" --initial --ignore \"/node_modules\""
   },
   "keywords": [],
   "author": "",

@@ -2,44 +2,13 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import List exposing (..)
-import Array2D
+import GameBoard exposing (..)
 
 main =
   Html.program { init=init, view = view, update = update, subscriptions = subscriptions }
 
 -- MODEL
 
-type Owner = None | Player1 | Player2
-
-type alias Location =
-    {
-    row: Int
-    , column : Int
-    }
-
-type alias Square =
-    {
-        location: Location
-        , owner: Owner
-    }
-
-type alias Side =
-    {
-        location: Location
-        , owner: Owner
-    }
-
-type alias Board =
-    {
-        squares: List Square
-        , sides: List Side
-    }
-
-type alias Score =
-    {
-        player1: Int
-        , player2: Int
-    }
 
 type alias Model =
   {
@@ -57,33 +26,7 @@ type alias Model =
     , showForm: Bool
   }
 
-seq: Int -> List Int
-seq max =
-    List.range 0 (max-1)
 
-sqlist: Int -> Int -> List Square
-sqlist row columns =
-        List.map (\column -> Square (Location row column) None) (seq columns)
-
-sqGrid: Int -> Int -> List Square
-sqGrid rows columns =
-        List.concatMap (\row -> sqlist row columns) (seq rows)
-
-sidelist: Int -> Int -> List Side
-sidelist row columns =
-        List.map (\column -> Side (Location row column) None) (seq (columns + 1))
-
-sideGrid: Int -> Int -> List Side
-sideGrid rows columns =
-        List.concatMap (\row -> sidelist row columns) (seq (rows + 1))
-
-newBoard: Int ->  Int -> Board
-newBoard rows columns =
-
-    let squares = sqGrid rows columns
-        sides =   sideGrid ((2 * rows) + 1) (columns + 1)
-    in
-        Board squares  sides
 
 -- INIT
 init : ( Model, Cmd Msg )
@@ -149,7 +92,7 @@ update msg model =
         ( updateTurn model side, Cmd.none)
 
     NewGame ->
-        ( { model | gameOver = False, currentPlayer = Player1, board = newBoard model.rows model.columns, showForm = True} , Cmd.none )
+        ( { model | score = (Score 0 0), gameOver = False, currentPlayer = Player1, board = newBoard model.rows model.columns, showForm = True} , Cmd.none )
 
 
 updateTurn: Model -> Side -> Model
@@ -496,7 +439,7 @@ numericInput idStr lbl val maxValue msg =
 
 form: Model -> Html Msg
 form model =
-    div [class "control-panel] [
+    div [class "control-panel"] [
         div[] [
             label [for "namePlayer1" ] [text "Player 1 Name: "]
             ,input [ id "namePlayer1",  value model.namePlayer1, onInput UpdateNamePlayer1] []
@@ -512,15 +455,6 @@ form model =
 ----------------------------
 -- tools
 ----------------------------
-setIfInRange: Int -> Int -> Int -> Int -> Int
-setIfInRange newVal currentValue minValue maxValue =
-    if minValue <= newVal && newVal <= maxValue then
-        newVal
-    else
-        currentValue
-
-toIntOrDefault default string =
-    Result.withDefault default (String.toInt string)
 
 view : Model -> Html Msg
 view model =
